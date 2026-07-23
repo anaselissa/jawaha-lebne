@@ -352,28 +352,6 @@
     }
   },
   {
-    "id": 12,
-    "categoryId": "karat",
-    "name": "لبنة سبايسي",
-    "description": "لبنة بلدية ممزوجة بتوابل حارة مختارة بعناية، لمحبي النكهات القوية.",
-    "basePrice": 5.0,
-    "image": "images/karat/spicy/kabeer.png",
-    "options": {
-      "sizes": [
-        {
-          "name": "كبير",
-          "priceAdd": 0,
-          "img": "images/karat/spicy/kabeer.png"
-        },
-        {
-          "name": "صغير",
-          "priceAdd": -2.0,
-          "img": "images/karat/spicy/kabeer.png"
-        }
-      ]
-    }
-  },
-  {
     "id": 13,
     "categoryId": "mooneh",
     "name": "خل تفاح طبيعي",
