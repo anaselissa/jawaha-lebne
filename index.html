@@ -93,8 +93,10 @@
 
   .qty-btn{ transition: background .15s ease; }
 
-  #addToCartBtn, #checkoutBtn{ transition: filter .1s ease; }
-  #addToCartBtn:active, #checkoutBtn:active{ filter: brightness(0.85); }
+  /* Visual press feedback is applied via JS class toggle on click (after the
+     gesture completes), not via :active pseudo-class, to avoid any chance of
+     Android Chrome cancelling the tap due to a visual change mid-touch. */
+  #addToCartBtn.pressed, #checkoutBtn.pressed{ filter: brightness(0.85); }
 
   .grain{
     background-image: radial-gradient(circle at 1px 1px, rgba(43,42,34,0.035) 1px, transparent 0);
@@ -397,6 +399,10 @@ document.getElementById("sheetOverlay").addEventListener("click", closeProductSh
 document.getElementById("closeSheetBtn").addEventListener("click", closeProductSheet);
 
 document.getElementById("addToCartBtn").addEventListener("click", () => {
+  const btn = document.getElementById("addToCartBtn");
+  btn.classList.add("pressed");
+  setTimeout(() => btn.classList.remove("pressed"), 150);
+
   const p = activeSheetProduct;
   const cartItem = {
     cartId: `${p.id}-${sheetState.size?.name || ''}-${sheetState.flavor?.name || ''}`,
@@ -497,6 +503,10 @@ document.getElementById("cartOverlay").addEventListener("click", closeCart);
 
 // ---------- WhatsApp checkout ----------
 document.getElementById("checkoutBtn").addEventListener("click", () => {
+  const btn = document.getElementById("checkoutBtn");
+  btn.classList.add("pressed");
+  setTimeout(() => btn.classList.remove("pressed"), 150);
+
   if(cart.length === 0) return;
   let msg = "مرحباً، بدي أطلب من جواها لبنة:\n\n";
   cart.forEach((c, i) => {
