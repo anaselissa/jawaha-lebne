@@ -33,6 +33,11 @@
     user-select: none;
     -webkit-touch-callout: none;
   }
+  /* Text/icons inside interactive elements never receive touch directly;
+     every tap resolves to the parent button/card itself. */
+  button *, .opt-btn *, .prod-card *, .qty-btn *, .cat-tab *{
+    pointer-events: none;
+  }
   .font-display{ font-family: 'Markazi Text', 'Cairo', serif; }
   html, body{ background: var(--cream); color: var(--ink); }
   ::-webkit-scrollbar{ display:none; }
@@ -164,9 +169,9 @@
     <div class="flex items-center justify-between mb-4 mt-5">
       <span class="text-sm font-bold" style="color:var(--ink)">الكمية</span>
       <div class="flex items-center gap-3 rounded-full px-1 py-1" style="background:var(--cream-deep)">
-        <button id="sheetQtyMinus" class="qty-btn w-8 h-8 rounded-full bg-white flex items-center justify-center font-bold" style="color:var(--olive)">−</button>
+        <button id="sheetQtyMinus" class="qty-btn w-8 h-8 rounded-full bg-white flex items-center justify-center font-bold" style="color:var(--olive)"><span>−</span></button>
         <span id="sheetQty" class="w-6 text-center font-bold">1</span>
-        <button id="sheetQtyPlus" class="qty-btn w-8 h-8 rounded-full bg-white flex items-center justify-center font-bold" style="color:var(--olive)">+</button>
+        <button id="sheetQtyPlus" class="qty-btn w-8 h-8 rounded-full bg-white flex items-center justify-center font-bold" style="color:var(--olive)"><span>+</span></button>
       </div>
     </div>
 
@@ -234,7 +239,7 @@ function renderCategoryTabs(){
   const wrap = document.querySelector("#catTabs > div");
   wrap.innerHTML = CATEGORY_ORDER.map((cat, i) => `
     <button data-cat="${cat}" class="cat-tab ${i===0?'active':''} px-4 py-2 rounded-full text-sm font-bold">
-      ${CATEGORY_LABELS[cat]}
+      <span>${CATEGORY_LABELS[cat]}</span>
     </button>
   `).join("");
   wrap.querySelectorAll(".cat-tab").forEach(btn => {
@@ -330,7 +335,7 @@ function renderSheetOptions(){
     const wrap = document.getElementById("sheetSizeOptions");
     wrap.innerHTML = p.options.sizes.map(s => `
       <button data-name="${s.name}" class="size-opt opt-btn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm ${s.name===sheetState.size.name?'selected':''}">
-        ${s.name} ${s.priceAdd > 0 ? "(+" + s.priceAdd.toFixed(2) + ")" : ""}
+        <span>${s.name} ${s.priceAdd > 0 ? "(+" + s.priceAdd.toFixed(2) + ")" : ""}</span>
       </button>
     `).join("");
     wrap.querySelectorAll(".size-opt").forEach(btn => {
@@ -345,7 +350,7 @@ function renderSheetOptions(){
     const wrap = document.getElementById("sheetFlavorOptions");
     wrap.innerHTML = p.options.flavors.map(f => `
       <button data-name="${f.name}" class="flavor-opt opt-btn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm ${f.name===sheetState.flavor.name?'selected':''}">
-        ${f.name} ${f.priceAdd > 0 ? "(+" + f.priceAdd.toFixed(2) + ")" : ""}
+        <span>${f.name} ${f.priceAdd > 0 ? "(+" + f.priceAdd.toFixed(2) + ")" : ""}</span>
       </button>
     `).join("");
     wrap.querySelectorAll(".flavor-opt").forEach(btn => {
