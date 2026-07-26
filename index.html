@@ -506,6 +506,13 @@ document.getElementById("checkoutBtn").addEventListener("click", () => {
 });
 
 loadProducts();
+
+// Suppress long-press context menu / text-selection lookup (Chrome "touch to search")
+// This is more aggressive than CSS user-select alone, which some Android Chrome
+// versions ignore for their built-in word-lookup feature.
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('selectstart', e => e.preventDefault());
+
 </script>
 </body>
 </html>
