@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم — جواها لبنة</title>
+<style>
+  :root{
+    --cream:#faf6ee;
+    --cream-deep:#f1e9d8;
+    --ink:#2b2a22;
+    --ink-soft:#6b6a5f;
+    --olive:#6b7a4a;
+    --olive-deep:#4f5c35;
+    --clay:#b5533c;
+    --line:#e4dcc8;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:'Tahoma','Segoe UI',sans-serif;
+    background:var(--cream); color:var(--ink);
+    min-height:100vh;
+  }
+  header{
+    background:var(--olive-deep); color:#fff;
+    padding:16px 20px; display:flex; align-items:center; justify-content:space-between;
+  }
+  header h1{ font-size:18px; margin:0; }
+  .container{ max-width:640px; margin:0 auto; padding:20px; }
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:14px;
+    padding:20px; margin-bottom:16px;
+  }
+  label{ display:block; font-size:13px; font-weight:bold; margin-bottom:6px; color:var(--ink-soft); }
+  input, select{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px;
+    font-size:14px; margin-bottom:14px; background:var(--cream);
+    font-family:inherit; color:var(--ink);
+  }
+  button{
+    cursor:pointer; border:none; border-radius:10px; font-weight:bold;
+    font-family:inherit; font-size:14px;
+  }
+  .btn-primary{
+    background:var(--olive); color:#fff; padding:12px 20px; width:100%;
+  }
+  .btn-primary:hover{ background:var(--olive-deep); }
+  .btn-secondary{
+    background:transparent; color:var(--olive-deep); border:2px solid var(--olive);
+    padding:8px 16px;
+  }
+  .btn-logout{
+    background:rgba(255,255,255,0.15); color:#fff; padding:8px 14px; border-radius:10px;
+  }
+  .hint{ font-size:12px; color:var(--ink-soft); margin:-8px 0 14px; line-height:1.6; }
+  .msg{ padding:12px 14px; border-radius:10px; font-size:13px; margin-bottom:14px; display:none; }
+  .msg.error{ background:#fbe4e0; color:#8a2f1f; display:block; }
+  .msg.loading{ background:#eef1e6; color:var(--olive-deep); display:block; }
+  .msg.success{ background:#e6efe0; color:var(--olive-deep); display:block; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th, td{ text-align:right; padding:9px 8px; border-bottom:1px solid var(--line); }
+  th{ color:var(--ink-soft); font-size:12px; }
+  .tag{
+    display:inline-block; font-size:11px; font-weight:bold; padding:2px 8px;
+    border-radius:999px; background:var(--cream-deep); color:var(--olive-deep);
+  }
+  .tag.soon{ background:#f5dcd5; color:var(--clay); }
+  .top-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .conn-info{ font-size:12px; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>لوحة تحكم — جواها لبنة</h1>
+  <button id="logoutBtn" class="btn-logout" style="display:none">تسجيل خروج</button>
+</header>
+
+<div class="container">
+
+  <!-- شاشة تسجيل الدخول -->
+  <div id="loginScreen" class="card">
+    <h2 style="margin-top:0">الاتصال بالموقع</h2>
+    <p class="hint">
+      عبّي البيانات التالية مرة وحدة. رمز الدخول (Token) ما بينحفظ بشكل دائم — بينمسح أول ما تسكري المتصفح أو تضغطي "تسجيل خروج"، وبتحتاجي تدخليه من جديد بالجلسة الجاية.
+    </p>
+
+    <label for="cfgOwner">اسم المستخدم/المنظمة على GitHub</label>
+    <input type="text" id="cfgOwner" placeholder="مثال: jawahalabneh">
+
+    <label for="cfgRepo">اسم الريبو (Repository)</label>
+    <input type="text" id="cfgRepo" placeholder="مثال: shop-test">
+
+    <label for="cfgBranch">اسم الفرع (Branch)</label>
+    <input type="text" id="cfgBranch" value="main">
+
+    <label for="cfgToken">رمز الدخول (Personal Access Token)</label>
+    <input type="password" id="cfgToken" placeholder="ghp_... أو github_pat_...">
+    <p class="hint">
+      لازم يكون التوكن معمول خصيصاً لهاد الريبو بس (Fine-grained token)، وصلاحيته "Contents: Read and write".
+    </p>
+
+    <div id="loginMsg" class="msg error"></div>
+
+    <button id="loginBtn" class="btn-primary">دخول</button>
+  </div>
+
+  <!-- شاشة اللوحة -->
+  <div id="adminScreen" style="display:none">
+    <div class="top-row">
+      <div class="conn-info">متصلة بـ: <span id="connInfo"></span></div>
+      <button id="changeConnBtn" class="btn-secondary">تغيير الإعدادات</button>
+    </div>
+
+    <div id="statusMsg" class="msg"></div>
+
+    <div class="card">
+      <h2 style="margin-top:0">المنتجات الحالية</h2>
+      <div id="productsWrap"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CONFIG_KEY = "jawaha_admin_config";
+const TOKEN_KEY  = "jawaha_admin_token"; // sessionStorage فقط
+
+function getConfig(){
+  try{ return JSON.parse(localStorage.getItem(CONFIG_KEY) || "null"); }
+  catch(e){ return null; }
+}
+
+function saveConfig(cfg){
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+}
+
+function clearSession(){
+  sessionStorage.removeItem(TOKEN_KEY);
+}
+
+// فك تشفير base64 يدعم العربي بشكل صحيح
+function b64DecodeUnicode(str){
+  const clean = str.replace(/\n/g, "");
+  return decodeURIComponent(
+    atob(clean).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
+  );
+}
+
+function showLoginMsg(text){
+  const el = document.getElementById("loginMsg");
+  if(!text){ el.style.display = "none"; return; }
+  el.textContent = text;
+  el.style.display = "block";
+}
+
+function showStatus(text, type){
+  const el = document.getElementById("statusMsg");
+  el.className = "msg " + (type || "loading");
+  el.textContent = text;
+  el.style.display = "block";
+}
+
+function hideStatus(){
+  document.getElementById("statusMsg").style.display = "none";
+}
+
+async function fetchProductsJson(cfg, token){
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/products.json?ref=${encodeURIComponent(cfg.branch)}`;
+  const res = await fetch(url, {
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github+json"
+    }
+  });
+
+  if(!res.ok){
+    if(res.status === 401) throw new Error("رمز الدخول (Token) غير صحيح أو منتهي الصلاحية.");
+    if(res.status === 403) throw new Error("التوكن ما إله صلاحية كافية على هاد الريبو. تأكدي من صلاحية Contents.");
+    if(res.status === 404) throw new Error("ما لقيت الملف — تأكدي من اسم المستخدم/الريبو/الفرع (products.json لازم يكون بجذر الريبو).");
+    throw new Error("صار خطأ بالاتصال (كود " + res.status + ").");
+  }
+
+  const data = await res.json();
+  const text = b64DecodeUnicode(data.content);
+  return JSON.parse(text);
+}
+
+function renderProducts(products){
+  const wrap = document.getElementById("productsWrap");
+  if(!products.length){
+    wrap.innerHTML = "<p class='hint'>ما في منتجات بالملف حالياً.</p>";
+    return;
+  }
+  const rows = products.map(p => `
+    <tr>
+      <td>${escapeHtml(p.name || "")}</td>
+      <td>${escapeHtml(p.categoryId || "")}</td>
+      <td>${(p.basePrice ?? "").toString()} د.أ</td>
+      <td>
+        ${p.options?.sizes ? "<span class='tag'>أحجام</span>" : ""}
+        ${p.options?.flavors ? "<span class='tag'>نكهات</span>" : ""}
+        ${p.comingSoon ? "<span class='tag soon'>قريباً</span>" : ""}
+      </td>
+    </tr>
+  `).join("");
+
+  wrap.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>الاسم</th><th>التصنيف</th><th>السعر الأساسي</th><th>خصائص</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="hint" style="margin-top:12px">
+      إجمالي المنتجات: ${products.length} — هاي شاشة عرض بس بالمرحلة الحالية (بلا تعديل/حذف بعد).
+    </p>
+  `;
+}
+
+function escapeHtml(str){
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+async function connectAndLoad(cfg, token){
+  showStatus("عم نتصل ونجيب المنتجات...", "loading");
+  try{
+    const products = await fetchProductsJson(cfg, token);
+    document.getElementById("connInfo").textContent = `${cfg.owner}/${cfg.repo} (${cfg.branch})`;
+    hideStatus();
+    renderProducts(products);
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("adminScreen").style.display = "block";
+    document.getElementById("logoutBtn").style.display = "inline-block";
+  }catch(err){
+    showStatus(err.message, "error");
+    document.getElementById("loginScreen").style.display = "block";
+    document.getElementById("adminScreen").style.display = "none";
+    document.getElementById("logoutBtn").style.display = "none";
+  }
+}
+
+document.getElementById("loginBtn").addEventListener("click", () => {
+  const owner  = document.getElementById("cfgOwner").value.trim();
+  const repo   = document.getElementById("cfgRepo").value.trim();
+  const branch = document.getElementById("cfgBranch").value.trim() || "main";
+  const token  = document.getElementById("cfgToken").value.trim();
+
+  if(!owner || !repo || !token){
+    showLoginMsg("لازم تعبّي اسم المستخدم واسم الريبو ورمز الدخول.");
+    return;
+  }
+  showLoginMsg("");
+
+  const cfg = { owner, repo, branch };
+  saveConfig(cfg);
+  sessionStorage.setItem(TOKEN_KEY, token);
+  connectAndLoad(cfg, token);
+});
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  clearSession();
+  document.getElementById("cfgToken").value = "";
+  document.getElementById("adminScreen").style.display = "none";
+  document.getElementById("logoutBtn").style.display = "none";
+  document.getElementById("loginScreen").style.display = "block";
+});
+
+document.getElementById("changeConnBtn").addEventListener("click", () => {
+  document.getElementById("adminScreen").style.display = "none";
+  document.getElementById("logoutBtn").style.display = "none";
+  document.getElementById("loginScreen").style.display = "block";
+});
+
+// محاولة الدخول التلقائي لو فيه إعدادات وتوكن محفوظين بنفس الجلسة
+(function init(){
+  const cfg = getConfig();
+  const token = sessionStorage.getItem(TOKEN_KEY);
+  if(cfg && token){
+    document.getElementById("cfgOwner").value = cfg.owner || "";
+    document.getElementById("cfgRepo").value = cfg.repo || "";
+    document.getElementById("cfgBranch").value = cfg.branch || "main";
+    connectAndLoad(cfg, token);
+  }else if(cfg){
+    document.getElementById("cfgOwner").value = cfg.owner || "";
+    document.getElementById("cfgRepo").value = cfg.repo || "";
+    document.getElementById("cfgBranch").value = cfg.branch || "main";
+  }
+})();
+</script>
+
+</body>
+</html>
