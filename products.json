@@ -334,8 +334,6 @@
     "description": "شطة بلدية حارة مصنوعة يدوياً من أجود أنواع الفلفل الحار وزيت الزيتون.",
     "basePrice": 3,
     "image": "images/mooneh/shattah/kabeer.png",
-    "comingSoon": true,
-    "hidden": true,
     "options": {
       "sizes": [
         {
