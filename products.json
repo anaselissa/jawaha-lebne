@@ -436,36 +436,5 @@
         }
       ]
     }
-  },
-  {
-    "id": 19,
-    "categoryId": "mahashi",
-    "name": "ميكس",
-    "description": "مجموعة من منتجات محاشي اللبنة",
-    "basePrice": 30,
-    "image": "images/mahashi/product-19/main.jpg",
-    "options": {
-      "sizes": [
-        {
-          "name": "كبير",
-          "priceAdd": 0
-        },
-        {
-          "name": "صغير",
-          "priceAdd": -12,
-          "img": "images/mahashi/product-19/size-2.jpg"
-        }
-      ],
-      "flavors": [
-        {
-          "name": "عادي",
-          "priceAdd": 0
-        },
-        {
-          "name": "حار",
-          "priceAdd": 0
-        }
-      ]
-    }
   }
 ]
