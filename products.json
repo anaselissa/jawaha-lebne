@@ -438,38 +438,6 @@
     }
   },
   {
-    "id": 19,
-    "categoryId": "mahashi",
-    "name": "دوالي وعنب جواها لبنة",
-    "description": "ورق دوالي بلدي محشو باللبنة الفاخرة، وصفة بيتية أصيلة بزيت الزيتون.",
-    "basePrice": 5,
-    "image": "images/mahashi/product-19/main.jpg",
-    "options": {
-      "sizes": [
-        {
-          "name": "كبير",
-          "priceAdd": 0,
-          "img": "images/mahashi/dawali/kabeer.png"
-        },
-        {
-          "name": "صغير",
-          "priceAdd": -2,
-          "img": "images/mahashi/dawali/sageer.png"
-        }
-      ],
-      "flavors": [
-        {
-          "name": "عادي",
-          "priceAdd": 0
-        },
-        {
-          "name": "سبايسي",
-          "priceAdd": 0
-        }
-      ]
-    }
-  },
-  {
     "id": 20,
     "categoryId": "mahashi",
     "name": "مقدوس جواها لبنة (نسخة) hgfffkm hg.ivdm",
