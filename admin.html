@@ -92,7 +92,7 @@
   .modal-box{
     background:#fff; border-radius:16px; padding:24px; max-width:560px; width:100%;
   }
-  .actions-cell{ white-space:nowrap; }
+  .actions-cell{ display:flex; flex-wrap:wrap; gap:6px; }
 </style>
 </head>
 <body>
@@ -219,6 +219,7 @@ let currentToken = null;
 let currentProducts = [];
 let currentSha = null;
 let editingId = null; // null = إضافة منتج جديد
+let isEditingExisting = false; // true فقط لما نعدّل منتج موجود فعلياً (مش نسخ)
 
 let mainImageFile = null;        // ملف الصورة الرئيسية الجديد (لو اختير)
 let currentMainImagePath = null; // مسار الصورة الحالية (عند التعديل)
@@ -397,6 +398,8 @@ function renderProducts(products){
       </td>
       <td class="actions-cell">
         <button class="btn-secondary btn-sm edit-btn" data-id="${p.id}">تعديل</button>
+        <button class="btn-secondary btn-sm duplicate-btn" data-id="${p.id}">نسخ</button>
+        <button class="btn-danger-outline btn-sm delete-btn" data-id="${p.id}">حذف</button>
       </td>
     </tr>
   `).join("");
@@ -414,8 +417,38 @@ function renderProducts(products){
   `;
 
   wrap.querySelectorAll(".edit-btn").forEach(btn => {
-    btn.addEventListener("click", () => openForm(parseInt(btn.dataset.id)));
+    btn.addEventListener("click", () => openForm(parseInt(btn.dataset.id), false));
   });
+  wrap.querySelectorAll(".duplicate-btn").forEach(btn => {
+    btn.addEventListener("click", () => openForm(parseInt(btn.dataset.id), true));
+  });
+  wrap.querySelectorAll(".delete-btn").forEach(btn => {
+    btn.addEventListener("click", () => deleteProduct(parseInt(btn.dataset.id)));
+  });
+}
+
+async function deleteProduct(id){
+  const product = currentProducts.find(p => p.id === id);
+  if(!product) return;
+
+  const confirmed = confirm(`متأكدة بدك تحذفي "${product.name}"؟ هاد الإجراء ما ممكن يتراجع عنه.`);
+  if(!confirmed) return;
+
+  showStatus("عم نحذف المنتج...", "loading");
+  try{
+    const updatedProducts = currentProducts.filter(p => p.id !== id);
+    const newSha = await saveProductsToGithub(
+      currentCfg, currentToken, updatedProducts, currentSha,
+      `حذف منتج: ${product.name}`
+    );
+    currentProducts = updatedProducts;
+    currentSha = newSha;
+    renderProducts(currentProducts);
+    populateCategoryOptions(currentProducts);
+    showStatus(`تم حذف "${product.name}" ✓`, "success");
+  }catch(err){
+    showStatus(err.message, "error");
+  }
 }
 
 function escapeHtml(str){
@@ -499,23 +532,28 @@ function showFormMsg(text){
   el.style.display = "block";
 }
 
-function openForm(id){
-  editingId = id || null;
+function openForm(id, asDuplicate){
+  editingId = (id && !asDuplicate) ? id : null;
+  isEditingExisting = !!(id && !asDuplicate);
   showFormMsg("");
   const product = id ? currentProducts.find(p => p.id === id) : null;
 
-  document.getElementById("formTitle").textContent = product ? "تعديل منتج" : "إضافة منتج جديد";
+  document.getElementById("formTitle").textContent =
+    asDuplicate ? "نسخ منتج (كمنتج جديد)" : (product ? "تعديل منتج" : "إضافة منتج جديد");
   document.getElementById("f_categoryId").value = product?.categoryId || document.getElementById("f_categoryId").value;
-  document.getElementById("f_name").value = product?.name || "";
+  document.getElementById("f_name").value = asDuplicate ? `${product.name} (نسخة)` : (product?.name || "");
   document.getElementById("f_description").value = product?.description || "";
   document.getElementById("f_basePrice").value = product?.basePrice ?? "";
   document.getElementById("f_comingSoon").checked = !!product?.comingSoon;
-  document.getElementById("f_hidden").checked = !!product?.hidden;
+  document.getElementById("f_hidden").checked = asDuplicate ? false : !!product?.hidden;
 
   mainImageFile = null;
   currentMainImagePath = product?.image || null;
   document.getElementById("f_imageFile").value = "";
   renderMainImagePreview();
+  if(asDuplicate && currentMainImagePath){
+    showFormMsg("النسخة رح تستخدم نفس صورة المنتج الأصلي مبدئياً. لو رفعتي صورة جديدة، رح تصير صورة خاصة فيها بس، وما رح تأثر على المنتج الأصلي.");
+  }
 
   formSizes = product?.options?.sizes ? JSON.parse(JSON.stringify(product.options.sizes)) : [];
   formFlavors = product?.options?.flavors ? JSON.parse(JSON.stringify(product.options.flavors)) : [];
@@ -661,7 +699,7 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     let mainPath = currentMainImagePath;
     if(mainImageFile){
       btn.textContent = "عم نرفع الصورة الرئيسية...";
-      mainPath = currentMainImagePath || `images/${categoryId}/product-${id}/main.jpg`;
+      mainPath = (isEditingExisting && currentMainImagePath) ? currentMainImagePath : `images/${categoryId}/product-${id}/main.jpg`;
       const base64 = await resizeImageFile(mainImageFile);
       await uploadImageToGithub(currentCfg, currentToken, mainPath, base64, `رفع صورة منتج: ${name}`);
     }
@@ -676,7 +714,7 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
         const clean = { name: s.name, priceAdd: s.priceAdd || 0 };
         if(s._file){
           btn.textContent = `عم نرفع صورة الحجم "${s.name}"...`;
-          const path = s.img || `images/${categoryId}/product-${id}/size-${i + 1}.jpg`;
+          const path = (isEditingExisting && s.img) ? s.img : `images/${categoryId}/product-${id}/size-${i + 1}.jpg`;
           const base64 = await resizeImageFile(s._file);
           await uploadImageToGithub(currentCfg, currentToken, path, base64, `رفع صورة حجم: ${name} - ${s.name}`);
           clean.img = path;
@@ -696,7 +734,7 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
         const clean = { name: f.name, priceAdd: f.priceAdd || 0 };
         if(f._file){
           btn.textContent = `عم نرفع صورة النكهة "${f.name}"...`;
-          const path = f.img || `images/${categoryId}/product-${id}/flavor-${i + 1}.jpg`;
+          const path = (isEditingExisting && f.img) ? f.img : `images/${categoryId}/product-${id}/flavor-${i + 1}.jpg`;
           const base64 = await resizeImageFile(f._file);
           await uploadImageToGithub(currentCfg, currentToken, path, base64, `رفع صورة نكهة: ${name} - ${f.name}`);
           clean.img = path;
