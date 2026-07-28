@@ -263,8 +263,8 @@
 
 <script>
 const WHATSAPP_NUMBER = "962781706961";
-const CATEGORY_LABELS = { mahashi: "محاشي اللبنة", karat: "الكرات والخلطات", mooneh: "المونة والمقبلات" };
-const CATEGORY_ORDER = ["mahashi", "karat", "mooneh"];
+let CATEGORY_LABELS = {};
+let CATEGORY_ORDER = [];
 
 let PRODUCTS = [];
 let cart = JSON.parse(localStorage.getItem("jawaha_cart") || "[]");
@@ -274,10 +274,19 @@ let sheetState = { size: null, flavor: null, qty: 1 };
 function money(n){ return n.toFixed(2) + " د.أ"; }
 function saveCart(){ localStorage.setItem("jawaha_cart", JSON.stringify(cart)); renderCartBadge(); }
 
-// ---------- Load products & render menu ----------
+// ---------- Load categories, products & render menu ----------
 async function loadProducts(){
-  const res = await fetch("products.json");
-  PRODUCTS = await res.json();
+  const [catRes, prodRes] = await Promise.all([
+    fetch("categories.json"),
+    fetch("products.json")
+  ]);
+  const categories = await catRes.json();
+  PRODUCTS = await prodRes.json();
+
+  CATEGORY_ORDER = categories.map(c => c.id);
+  CATEGORY_LABELS = {};
+  categories.forEach(c => { CATEGORY_LABELS[c.id] = c.label; });
+
   renderCategoryTabs();
   renderMenu();
   renderCartBadge();
