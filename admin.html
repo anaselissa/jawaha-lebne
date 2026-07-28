@@ -552,11 +552,18 @@ function openForm(id, asDuplicate){
   document.getElementById("f_imageFile").value = "";
   renderMainImagePreview();
   if(asDuplicate && currentMainImagePath){
-    showFormMsg("النسخة رح تستخدم نفس صورة المنتج الأصلي مبدئياً. لو رفعتي صورة جديدة، رح تصير صورة خاصة فيها بس، وما رح تأثر على المنتج الأصلي.");
+    showFormMsg("النسخة رح تستخدم نفس الصورة الرئيسية للمنتج الأصلي مبدئياً (وبتنطبق تلقائياً على كل الأحجام والنكهات إذا ما إلها صور خاصة). لو رفعتي صورة رئيسية جديدة، هي رح تصير صورة الأساس لكل شي بالنسخة. لو حبيتي صورة مختلفة لحجم/نكهة معيّن بالنسخة، ارفعيها من نفس صف الحجم/النكهة.");
   }
 
   formSizes = product?.options?.sizes ? JSON.parse(JSON.stringify(product.options.sizes)) : [];
   formFlavors = product?.options?.flavors ? JSON.parse(JSON.stringify(product.options.flavors)) : [];
+
+  if(asDuplicate){
+    // عند النسخ، ما بنورّث صور الأحجام/النكهات القديمة —
+    // هيك أي حجم/نكهة بلا صورة خاصة بيرجع يستخدم الصورة الرئيسية الجديدة تلقائياً
+    formSizes = formSizes.map(s => ({ name: s.name, priceAdd: s.priceAdd }));
+    formFlavors = formFlavors.map(f => ({ name: f.name, priceAdd: f.priceAdd }));
+  }
 
   document.getElementById("f_hasSizes").checked = formSizes.length > 0;
   document.getElementById("f_hasFlavors").checked = formFlavors.length > 0;
