@@ -180,6 +180,11 @@
     </div>
 
     <div class="checkbox-row">
+      <input type="checkbox" id="f_hidden">
+      <label for="f_hidden">إخفاء المنتج مؤقتاً (ما يظهر بالموقع خالص)</label>
+    </div>
+
+    <div class="checkbox-row">
       <input type="checkbox" id="f_hasSizes">
       <label for="f_hasSizes">فيه أحجام مختلفة (كبير/صغير...)</label>
     </div>
@@ -320,6 +325,7 @@ function renderProducts(products){
         ${p.options?.sizes ? "<span class='tag'>أحجام</span>" : ""}
         ${p.options?.flavors ? "<span class='tag'>نكهات</span>" : ""}
         ${p.comingSoon ? "<span class='tag soon'>قريباً</span>" : ""}
+        ${p.hidden ? "<span class='tag soon'>مخفي</span>" : ""}
       </td>
       <td class="actions-cell">
         <button class="btn-secondary btn-sm edit-btn" data-id="${p.id}">تعديل</button>
@@ -437,6 +443,7 @@ function openForm(id){
   document.getElementById("f_basePrice").value = product?.basePrice ?? "";
   document.getElementById("f_image").value = product?.image || "";
   document.getElementById("f_comingSoon").checked = !!product?.comingSoon;
+  document.getElementById("f_hidden").checked = !!product?.hidden;
 
   formSizes = product?.options?.sizes ? JSON.parse(JSON.stringify(product.options.sizes)) : [];
   formFlavors = product?.options?.flavors ? JSON.parse(JSON.stringify(product.options.flavors)) : [];
@@ -540,6 +547,7 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
   };
 
   if(document.getElementById("f_comingSoon").checked) product.comingSoon = true;
+  if(document.getElementById("f_hidden").checked) product.hidden = true;
 
   const options = {};
   if(document.getElementById("f_hasSizes").checked && formSizes.length){
