@@ -436,5 +436,14 @@
         }
       ]
     }
+  },
+  {
+    "id": 19,
+    "categoryId": "cat-1785269257974",
+    "name": "تين مجفف",
+    "description": "تين بلدي  مجفف",
+    "basePrice": 5,
+    "comingSoon": true,
+    "image": "images/cat-1785269257974/product-19/main.jpg"
   }
 ]
