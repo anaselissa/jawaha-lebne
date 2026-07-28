@@ -422,7 +422,7 @@
     "description": "بندورة مشوية جواها لبنة",
     "basePrice": 5,
     "image": "images/mahashi/bandora/kabeer.png",
-    "hidden": true,
+    "comingSoon": true,
     "options": {
       "sizes": [
         {
