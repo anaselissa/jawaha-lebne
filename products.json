@@ -436,36 +436,5 @@
         }
       ]
     }
-  },
-  {
-    "id": 20,
-    "categoryId": "mahashi",
-    "name": "مقدوس جواها لبنة (نسخة) hgfffkm hg.ivdm",
-    "description": "مقدوس بلدي طازج محشو باللبنة الفاخرة، منقوع بزيت الزيتون البلدي 100%.",
-    "basePrice": 5,
-    "image": "images/mahashi/product-20/main.jpg",
-    "options": {
-      "sizes": [
-        {
-          "name": "كبير",
-          "priceAdd": 0
-        },
-        {
-          "name": "صغير",
-          "priceAdd": -2,
-          "img": "images/mahashi/product-20/size-2.jpg"
-        }
-      ],
-      "flavors": [
-        {
-          "name": "عادي",
-          "priceAdd": 0
-        },
-        {
-          "name": "سبايسي",
-          "priceAdd": 0
-        }
-      ]
-    }
   }
 ]
