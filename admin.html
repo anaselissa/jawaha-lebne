@@ -168,10 +168,11 @@
     <label for="f_basePrice">السعر الأساسي (د.أ)</label>
     <input type="number" id="f_basePrice" step="0.01" min="0">
 
-    <label for="f_image">مسار الصورة الرئيسية</label>
-    <input type="text" id="f_image" placeholder="images/karat/اسم-المجلد/kabeer.png">
+    <label for="f_imageFile">صورة المنتج الرئيسية</label>
+    <div id="f_imagePreviewWrap" style="margin-bottom:10px"></div>
+    <input type="file" id="f_imageFile" accept="image/*">
     <p class="hint">
-      هلق لسا رفع الصور يدوي (لازم تكوني رفعتيها بنفس هاد المسار للريبو). رح نخليها آلية بالمرحلة الجاية.
+      اختاري صورة من جهازك/جوالك — بتنصغّر وبتنرفع للموقع تلقائياً.
     </p>
 
     <div class="checkbox-row">
@@ -218,6 +219,9 @@ let currentToken = null;
 let currentProducts = [];
 let currentSha = null;
 let editingId = null; // null = إضافة منتج جديد
+
+let mainImageFile = null;        // ملف الصورة الرئيسية الجديد (لو اختير)
+let currentMainImagePath = null; // مسار الصورة الحالية (عند التعديل)
 
 function getConfig(){
   try{ return JSON.parse(localStorage.getItem(CONFIG_KEY) || "null"); }
@@ -308,6 +312,70 @@ async function saveProductsToGithub(cfg, token, products, sha, message){
 
   const data = await res.json();
   return data.content.sha;
+}
+
+// تصغير الصورة قبل الرفع (أقصى بعد ١٠٠٠px) وتحويلها JPEG لتصغير الحجم
+function resizeImageFile(file, maxDim = 1000, quality = 0.82){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          if(width > height){ height = Math.round(height * maxDim / width); width = maxDim; }
+          else{ width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl.split(",")[1]);
+      };
+      img.onerror = () => reject(new Error("تعذر قراءة الصورة المختارة."));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error("تعذر فتح ملف الصورة."));
+    reader.readAsDataURL(file);
+  });
+}
+
+// جيب sha للصورة الحالية لو موجودة أصلاً (لازمة لتحديث ملف موجود)
+async function getExistingFileSha(cfg, token, path){
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${encodeURIComponent(cfg.branch)}`;
+  const res = await fetch(url, {
+    headers: { "Authorization": `Bearer ${token}`, "Accept": "application/vnd.github+json" }
+  });
+  if(res.status === 404) return null;
+  if(!res.ok) throw new Error("تعذر التحقق من الصورة الحالية (كود " + res.status + ").");
+  const data = await res.json();
+  return data.sha;
+}
+
+async function uploadImageToGithub(cfg, token, path, base64Content, message){
+  const sha = await getExistingFileSha(cfg, token, path);
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${path}`;
+  const body = { message, content: base64Content, branch: cfg.branch };
+  if(sha) body.sha = sha;
+
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github+json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  if(!res.ok){
+    if(res.status === 409) throw new Error("صار تعارض أثناء رفع الصورة، حاولي كمان مرة.");
+    if(res.status === 401) throw new Error("رمز الدخول غير صحيح أو منتهي الصلاحية.");
+    if(res.status === 403) throw new Error("التوكن ما إله صلاحية كتابة كافية لرفع الصور.");
+    throw new Error("تعذر رفع الصورة (كود " + res.status + ").");
+  }
 }
 
 function renderProducts(products){
@@ -441,9 +509,13 @@ function openForm(id){
   document.getElementById("f_name").value = product?.name || "";
   document.getElementById("f_description").value = product?.description || "";
   document.getElementById("f_basePrice").value = product?.basePrice ?? "";
-  document.getElementById("f_image").value = product?.image || "";
   document.getElementById("f_comingSoon").checked = !!product?.comingSoon;
   document.getElementById("f_hidden").checked = !!product?.hidden;
+
+  mainImageFile = null;
+  currentMainImagePath = product?.image || null;
+  document.getElementById("f_imageFile").value = "";
+  renderMainImagePreview();
 
   formSizes = product?.options?.sizes ? JSON.parse(JSON.stringify(product.options.sizes)) : [];
   formFlavors = product?.options?.flavors ? JSON.parse(JSON.stringify(product.options.flavors)) : [];
@@ -463,6 +535,24 @@ function closeForm(){
   document.getElementById("formOverlay").style.display = "none";
 }
 
+function renderMainImagePreview(){
+  const wrap = document.getElementById("f_imagePreviewWrap");
+  if(currentMainImagePath && currentCfg){
+    const url = `https://raw.githubusercontent.com/${currentCfg.owner}/${currentCfg.repo}/${currentCfg.branch}/${currentMainImagePath}`;
+    wrap.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px">
+        <img src="${url}" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--line)" onerror="this.style.display='none'">
+        <span class="hint" style="margin:0">الصورة الحالية — اختاري صورة جديدة بس إذا بدك تغييرها</span>
+      </div>`;
+  }else{
+    wrap.innerHTML = `<p class="hint" style="margin:0">ما في صورة بعد — لازم تختاري وحدة.</p>`;
+  }
+}
+
+document.getElementById("f_imageFile").addEventListener("change", (e) => {
+  mainImageFile = e.target.files[0] || null;
+});
+
 function renderOptionRows(containerId, list, kind){
   const wrap = document.getElementById(containerId);
   wrap.innerHTML = list.map((item, idx) => `
@@ -477,18 +567,27 @@ function renderOptionRows(containerId, list, kind){
       </div>
       <div class="col-img">
         <label>صورة مخصصة (اختياري)</label>
-        <input type="text" data-kind="${kind}" data-idx="${idx}" data-field="img" value="${escapeHtml(item.img || "")}">
+        <input type="file" accept="image/*" class="opt-img-input" data-kind="${kind}" data-idx="${idx}">
+        ${item.img ? `<p class="hint" style="margin:4px 0 0">فيه صورة محفوظة أصلاً — اختاري صورة بس إذا بدك تغييرها</p>` : ``}
       </div>
       <button type="button" class="btn-danger-outline remove-row-btn" data-kind="${kind}" data-idx="${idx}">حذف</button>
     </div>
   `).join("");
 
-  wrap.querySelectorAll("input").forEach(input => {
+  wrap.querySelectorAll('input[type="text"], input[type="number"]').forEach(input => {
     input.addEventListener("input", () => {
       const idx = parseInt(input.dataset.idx);
       const field = input.dataset.field;
       const list = input.dataset.kind === "size" ? formSizes : formFlavors;
       list[idx][field] = field === "priceAdd" ? parseFloat(input.value || "0") : input.value;
+    });
+  });
+
+  wrap.querySelectorAll(".opt-img-input").forEach(input => {
+    input.addEventListener("change", () => {
+      const idx = parseInt(input.dataset.idx);
+      const list = input.dataset.kind === "size" ? formSizes : formFlavors;
+      list[idx]._file = input.files[0] || null;
     });
   });
 
@@ -530,47 +629,98 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
   const name = document.getElementById("f_name").value.trim();
   const categoryId = document.getElementById("f_categoryId").value;
   const basePriceRaw = document.getElementById("f_basePrice").value;
-  const image = document.getElementById("f_image").value.trim();
 
-  if(!name || !categoryId || basePriceRaw === "" || !image){
-    showFormMsg("لازم تعبّي: اسم المنتج، التصنيف، السعر الأساسي، ومسار الصورة.");
+  if(!name || !categoryId || basePriceRaw === ""){
+    showFormMsg("لازم تعبّي: اسم المنتج، التصنيف، والسعر الأساسي.");
+    return;
+  }
+  if(!mainImageFile && !currentMainImagePath){
+    showFormMsg("لازم تختاري صورة رئيسية للمنتج.");
     return;
   }
 
+  const id = editingId || (Math.max(0, ...currentProducts.map(p => p.id)) + 1);
+
   const product = {
-    id: editingId || (Math.max(0, ...currentProducts.map(p => p.id)) + 1),
+    id,
     categoryId,
     name,
     description: document.getElementById("f_description").value.trim(),
-    basePrice: parseFloat(basePriceRaw),
-    image
+    basePrice: parseFloat(basePriceRaw)
   };
 
   if(document.getElementById("f_comingSoon").checked) product.comingSoon = true;
   if(document.getElementById("f_hidden").checked) product.hidden = true;
 
-  const options = {};
-  if(document.getElementById("f_hasSizes").checked && formSizes.length){
-    options.sizes = formSizes.filter(s => s.name);
-  }
-  if(document.getElementById("f_hasFlavors").checked && formFlavors.length){
-    options.flavors = formFlavors.filter(f => f.name);
-  }
-  if(Object.keys(options).length) product.options = options;
-
-  let updatedProducts;
-  if(editingId){
-    updatedProducts = currentProducts.map(p => p.id === editingId ? product : p);
-  }else{
-    updatedProducts = [...currentProducts, product];
-  }
-
   showFormMsg("");
   const btn = document.getElementById("saveProductBtn");
   btn.disabled = true;
-  btn.textContent = "عم نحفظ...";
 
   try{
+    // ١) رفع الصورة الرئيسية (بس إذا فيه صورة جديدة مختارة)
+    let mainPath = currentMainImagePath;
+    if(mainImageFile){
+      btn.textContent = "عم نرفع الصورة الرئيسية...";
+      mainPath = currentMainImagePath || `images/${categoryId}/product-${id}/main.jpg`;
+      const base64 = await resizeImageFile(mainImageFile);
+      await uploadImageToGithub(currentCfg, currentToken, mainPath, base64, `رفع صورة منتج: ${name}`);
+    }
+    product.image = mainPath;
+
+    // ٢) رفع صور الأحجام (كل حجم صورته اختيارية)
+    const sizesToSave = [];
+    if(document.getElementById("f_hasSizes").checked){
+      for(let i = 0; i < formSizes.length; i++){
+        const s = formSizes[i];
+        if(!s.name) continue;
+        const clean = { name: s.name, priceAdd: s.priceAdd || 0 };
+        if(s._file){
+          btn.textContent = `عم نرفع صورة الحجم "${s.name}"...`;
+          const path = s.img || `images/${categoryId}/product-${id}/size-${i + 1}.jpg`;
+          const base64 = await resizeImageFile(s._file);
+          await uploadImageToGithub(currentCfg, currentToken, path, base64, `رفع صورة حجم: ${name} - ${s.name}`);
+          clean.img = path;
+        }else if(s.img){
+          clean.img = s.img;
+        }
+        sizesToSave.push(clean);
+      }
+    }
+
+    // ٣) رفع صور النكهات (كل نكهة صورتها اختيارية)
+    const flavorsToSave = [];
+    if(document.getElementById("f_hasFlavors").checked){
+      for(let i = 0; i < formFlavors.length; i++){
+        const f = formFlavors[i];
+        if(!f.name) continue;
+        const clean = { name: f.name, priceAdd: f.priceAdd || 0 };
+        if(f._file){
+          btn.textContent = `عم نرفع صورة النكهة "${f.name}"...`;
+          const path = f.img || `images/${categoryId}/product-${id}/flavor-${i + 1}.jpg`;
+          const base64 = await resizeImageFile(f._file);
+          await uploadImageToGithub(currentCfg, currentToken, path, base64, `رفع صورة نكهة: ${name} - ${f.name}`);
+          clean.img = path;
+        }else if(f.img){
+          clean.img = f.img;
+        }
+        flavorsToSave.push(clean);
+      }
+    }
+
+    const options = {};
+    if(sizesToSave.length) options.sizes = sizesToSave;
+    if(flavorsToSave.length) options.flavors = flavorsToSave;
+    if(Object.keys(options).length) product.options = options;
+
+    // ٤) حفظ بيانات المنتج نفسها — آخر خطوة، بعد ما كل الصور انرفعت بنجاح
+    btn.textContent = "عم نحفظ بيانات المنتج...";
+    let updatedProducts;
+    if(editingId){
+      updatedProducts = currentProducts.map(p => p.id === editingId ? product : p);
+    }else{
+      updatedProducts = [...currentProducts, product];
+    }
+
     const newSha = await saveProductsToGithub(
       currentCfg, currentToken, updatedProducts, currentSha,
       editingId ? `تعديل منتج: ${name}` : `إضافة منتج جديد: ${name}`
