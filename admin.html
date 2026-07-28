@@ -118,7 +118,7 @@
   <div id="loginScreen" class="card">
     <h2 style="margin-top:0">الاتصال بالموقع</h2>
     <p class="hint">
-      عبّئ البيانات التالية مرة وحدة. رمز الدخول (Token) ما بينحفظ بشكل دائم — بينمسح أول ما تسكر المتصفح أو تضغط "تسجيل خروج"، وبتحتاج تدخله من جديد بالجلسة الجاية.
+      عبّئ البيانات التالية مرة وحدة. رمز الدخول (Token) رح ينحفظ بشكل دائم على هاد الجهاز، وما رح يطلبه منك تاني إلا إذا ضغطت "تسجيل خروج" بنفسك. لا تدخله على جهاز مشترك مع حدا غيرك.
     </p>
 
     <label for="cfgOwner">اسم المستخدم/المنظمة على GitHub</label>
@@ -231,7 +231,7 @@
 
 <script>
 const CONFIG_KEY = "jawaha_admin_config";
-const TOKEN_KEY  = "jawaha_admin_token"; // sessionStorage فقط
+const TOKEN_KEY  = "jawaha_admin_token"; // محفوظ بشكل دائم على هاد الجهاز (localStorage)
 
 let currentCfg = null;
 let currentToken = null;
@@ -255,7 +255,7 @@ function saveConfig(cfg){
 }
 
 function clearSession(){
-  sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 // فك تشفير base64 يدعم العربي بشكل صحيح
@@ -654,7 +654,7 @@ document.getElementById("loginBtn").addEventListener("click", () => {
 
   const cfg = { owner, repo, branch };
   saveConfig(cfg);
-  sessionStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(TOKEN_KEY, token);
   connectAndLoad(cfg, token);
 });
 
@@ -942,7 +942,7 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
 // محاولة الدخول التلقائي لو فيه إعدادات وتوكن محفوظين بنفس الجلسة
 function initApp(){
   const cfg = getConfig();
-  const token = sessionStorage.getItem(TOKEN_KEY);
+  const token = localStorage.getItem(TOKEN_KEY);
   if(cfg && token){
     document.getElementById("cfgOwner").value = cfg.owner || "";
     document.getElementById("cfgRepo").value = cfg.repo || "";
