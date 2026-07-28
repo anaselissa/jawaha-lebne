@@ -305,7 +305,7 @@ function renderCategoryTabs(){
 function renderMenu(){
   const container = document.getElementById("menuContent");
   container.innerHTML = CATEGORY_ORDER.map(cat => {
-    const items = PRODUCTS.filter(p => p.categoryId === cat);
+    const items = PRODUCTS.filter(p => p.categoryId === cat && !p.hidden);
     return `
       <section id="cat-${cat}" class="pt-6 scroll-mt-28">
         <h2 class="font-display font-bold text-2xl mb-4" style="color:var(--olive-deep)">${CATEGORY_LABELS[cat]}</h2>
