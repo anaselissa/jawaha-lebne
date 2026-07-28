@@ -6,6 +6,7 @@
     "description": "مقدوس بلدي طازج محشو باللبنة الفاخرة، منقوع بزيت الزيتون البلدي 100%.",
     "basePrice": 5,
     "image": "images/mahashi/makdoos/kabeer.png",
+    "hidden": true,
     "options": {
       "sizes": [
         {
